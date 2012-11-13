@@ -344,9 +344,17 @@ var Reveal = (function(){
 	 * Binds all event listeners.
 	 */
 	function addEventListeners() {
-		document.addEventListener( 'touchstart', onDocumentTouchStart, false );
-		document.addEventListener( 'touchmove', onDocumentTouchMove, false );
-		document.addEventListener( 'touchend', onDocumentTouchEnd, false );
+
+		if (window.navigator.msPointerEnabled) {
+			document.addEventListener('MSPointerDown', preventAndForward(onDocumentTouchStart), false);
+			document.addEventListener('MSPointerMove', preventAndForward(onDocumentTouchMove), false);
+			document.addEventListener('MSPointerUp', preventAndForward(onDocumentTouchEnd), false);
+		} else {
+			document.addEventListener('touchstart', preventAndForward(onDocumentTouchStart), false );
+			document.addEventListener('touchmove', preventAndForward(onDocumentTouchMove), false );
+			document.addEventListener('touchend', preventAndForward(onDocumentTouchEnd), false );
+		}
+		
 		window.addEventListener( 'hashchange', onWindowHashChange, false );
 		window.addEventListener( 'resize', onWindowResize, false );
 
@@ -373,9 +381,16 @@ var Reveal = (function(){
 	 */
 	function removeEventListeners() {
 		document.removeEventListener( 'keydown', onDocumentKeyDown, false );
-		document.removeEventListener( 'touchstart', onDocumentTouchStart, false );
-		document.removeEventListener( 'touchmove', onDocumentTouchMove, false );
-		document.removeEventListener( 'touchend', onDocumentTouchEnd, false );
+		
+		if (window.navigator.msPointerEnabled) {
+			document.removeEventListener('MSPointerDown', onDocumentTouchStart, false);
+			document.removeEventListener('MSPointerMove', onDocumentTouchMove, false);
+			document.removeEventListener('MSPointerUp', onDocumentTouchEnd, false);
+		} else {
+			document.removeEventListener('touchstart', onDocumentTouchStart, false );
+			document.removeEventListener('touchmove', onDocumentTouchMove, false );
+			document.removeEventListener('touchend', onDocumentTouchEnd, false );
+		}
 		window.removeEventListener( 'hashchange', onWindowHashChange, false );
 		window.removeEventListener( 'resize', onWindowResize, false );
 
@@ -1333,10 +1348,29 @@ var Reveal = (function(){
 	 * enables support for swipe and pinch gestures.
 	 */
 	function onDocumentTouchStart( event ) {
-		touch.startX = event.touches[0].clientX;
-		touch.startY = event.touches[0].clientY;
-		touch.startCount = event.touches.length;
+		var touchPoints = (typeof event.changedTouches != 'undefined') ? event.changedTouches : [event];
+		//console.dir(event);
+		//console.dir(touchPoints);
+		// touch.startX = event.touches[0].clientX;
+		// touch.startY = event.touches[0].clientY;
+		// touch.startCount = event.touches.length;
 
+		touch.startX = touchPoints[0].clientX;
+		touch.startY = touchPoints[0].clientY;
+		touch.startCount = touchPoints.length;
+		
+
+		if( touchPoints.length === 2 && config.overview ) {
+			touch.startSpan = distanceBetween( {
+				x: touchPoints[1].clientX,
+				y: touchPoints[1].clientY
+			}, {
+				x: touch.startX,
+				y: touch.startY
+			} );
+		}
+
+		/*
 		// If there's two touches we need to memorize the distance
 		// between those two points to detect pinching
 		if( event.touches.length === 2 && config.overview ) {
@@ -1348,6 +1382,7 @@ var Reveal = (function(){
 				y: touch.startY
 			} );
 		}
+		*/
 	}
 
 	/**
@@ -1356,17 +1391,19 @@ var Reveal = (function(){
 	function onDocumentTouchMove( event ) {
 		// Each touch should only trigger one action
 		if( !touch.handled ) {
-			var currentX = event.touches[0].clientX;
-			var currentY = event.touches[0].clientY;
+			var touchPoints = (typeof event.changedTouches != 'undefined') ? event.changedTouches : [event];
+
+			var currentX = touchPoints[0].clientX;
+			var currentY = touchPoints[0].clientY;
 
 			// If the touch started off with two points and still has
 			// two active touches; test for the pinch gesture
-			if( event.touches.length === 2 && touch.startCount === 2 && config.overview ) {
+			if( touchPoints.length === 2 && touch.startCount === 2 && config.overview ) {
 
 				// The current distance in pixels between the two touch points
 				var currentSpan = distanceBetween( {
-					x: event.touches[1].clientX,
-					y: event.touches[1].clientY
+					x: touchPoints[1].clientX,
+					y: touchPoints[1].clientY
 				}, {
 					x: touch.startX,
 					y: touch.startY
@@ -1389,7 +1426,7 @@ var Reveal = (function(){
 
 			}
 			// There was only one touch point, look for a swipe
-			else if( event.touches.length === 1 && touch.startCount !== 2 ) {
+			else if( touchPoints.length === 1 && touch.startCount !== 2 ) {
 
 				var deltaX = currentX - touch.startX,
 					deltaY = currentY - touch.startY;
