@@ -1,6 +1,6 @@
 # reveal.js
 
-''This adds a small patch to get touch events working in IE10.''
+*This adds a small patch to get touch events working in IE10.*
 
 A framework for easily creating beautiful presentations using HTML. [Check out the live demo](http://lab.hakim.se/reveal-js/).
 
